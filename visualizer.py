@@ -59,12 +59,26 @@ class MyDotWindow(xdot.DotWindow):
         label.show()
 
         entry = gtk.Entry(max=0)
+        # entry.connect('enter-notify-event', self.on_symbol_enter)
+        # entry.connect('key_press', self.on_symbol_enter)
+        entry.connect('activate', self.on_symbol_enter)
         hbox.pack_start(entry, True, True, 10)
         entry.show()
+
 
         vbox.pack_start(hbox, False)
         vbox.reorder_child(hbox, 1)
         hbox.show()
+
+#        text = gtk.TextBuffer()
+#        text.set_text("Hello world")
+#        viewer = gtk.TextView(text)
+#        vbox.pack_start(viewer, False)
+#        viewer.show()
+
+    def on_symbol_enter(self, widget):
+        print widget.get_text()
+        widget.set_text('')
 
     def on_url_clicked(self, widget, url, event):
         dialog = gtk.MessageDialog(
