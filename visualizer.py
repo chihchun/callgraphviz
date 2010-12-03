@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #
+# Copyright 2010 Rex Tsai <chihchun@kalug.linux.org.tw>
 # Copyright 2008 Jose Fonseca
 #
 # This program is free software: you can redistribute it and/or modify it
@@ -36,12 +37,6 @@ class Visualizer(xdot.DotWindow):
 
     def __init__(self):
         xdot.DotWindow.__init__(self)
-
-        """
-        self.actiongroup.add_actions((
-            ('New',  gtk.STOCK_OPEN, None, None, None, self.on_open),
-            ));
-        """
         self.widget.connect('clicked', self.on_url_clicked)
 
         toolbar = self.uimanager.get_widget('/ToolBar')
@@ -91,7 +86,7 @@ class Visualizer(xdot.DotWindow):
 
     def addSymbol(self, symbol):
         print "adding %s" % symbol
-        # TODO: Saving the filename and line number.
+        # TODO: sould Saving the filename and line number.
         defs, calls = self.functionDefincation(symbol)
         print defs
         if len(defs) >= 1:
@@ -139,20 +134,8 @@ class Visualizer(xdot.DotWindow):
             self.set_title(os.path.basename(filename) + ' - Code Visualizer')
             self.widget.zoom_to_fit()
 
-    def update_database(self):
-        if not os.path.isfile(self.working_dir + "/cscope.out"):
-            dialog = gtk.MessageDialog(parent=self, type=gtk.MESSAGE_QUESTION, buttons=gtk.BUTTONS_YES_NO)
-            dialog.set_default_response(gtk.RESPONSE_YES)
-            dialog.set_markup("Create cscope database for %s now ?" % self.working_dir )
-            ret = dialog.run()
-            dialog.destroy()
-            if ret == gtk.RESPONSE_YES:
-                cmd = "cscope -bkRu"
-                process = subprocess.call(cmd, shell = True, cwd = self.working_dir) 
-                del process
-        pass
-
     def cscope(self, mode, func):
+        # TODO: check the cscope database is exist.
         cmd = "cscope -d -l -L -%d %s" % (mode, func) 
         process = subprocess.Popen(cmd, stdout = subprocess.PIPE, shell = True, cwd = self.working_dir) 
         csoutput = process.stdout.read() 
@@ -172,17 +155,32 @@ class Visualizer(xdot.DotWindow):
     def functionDefincation(self, func):
         return self.cscope(1, func)
 
-    def functionsCalled(self, entryFun):
+    def functionsCalled(self, func):
         # Find functions called by this function:
-        return self.cscope(2, entryFun)
+        return self.cscope(2, func)
+
+    def functionsCalling(self, func):
+        # Find functions calling this function:
+        return self.cscope(3, func)
+
+    def update_database(self):
+        if not os.path.isfile(self.working_dir + "/cscope.out"):
+            dialog = gtk.MessageDialog(parent=self, type=gtk.MESSAGE_QUESTION, buttons=gtk.BUTTONS_YES_NO)
+            dialog.set_default_response(gtk.RESPONSE_YES)
+            dialog.set_markup("Create cscope database for %s now ?" % self.working_dir )
+            ret = dialog.run()
+            dialog.destroy()
+            if ret == gtk.RESPONSE_YES:
+                cmd = "cscope -bkRu"
+                process = subprocess.call(cmd, shell = True, cwd = self.working_dir) 
+                del process
+        pass
+
 
     def on_open(self, action):
         chooser = gtk.FileChooserDialog(title="Open dot File",
                                         action=gtk.FILE_CHOOSER_ACTION_OPEN,
-                                        buttons=(gtk.STOCK_CANCEL,
-                                                 gtk.RESPONSE_CANCEL,
-                                                 gtk.STOCK_OPEN,
-                                                 gtk.RESPONSE_OK))
+                                        buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK)) 
         chooser.set_default_response(gtk.RESPONSE_OK)
         filter = gtk.FileFilter()
         filter.set_name("Graphviz dot files")
