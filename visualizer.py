@@ -85,10 +85,8 @@ class Visualizer(xdot.DotWindow):
         self.addSymbol(symbol)
 
     def addSymbol(self, symbol):
-        print "adding %s" % symbol
         # TODO: sould Saving the filename and line number.
         defs, calls = self.functionDefincation(symbol)
-        print defs
         if len(defs) >= 1:
             self.interest[symbol] = 1
         self.update_graph()
