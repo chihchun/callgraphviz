@@ -32,6 +32,7 @@ class Visualizer(xdot.DotWindow):
 
     interest = {}
     working_dir = None
+    filename = None
 
     def __init__(self):
         xdot.DotWindow.__init__(self)
@@ -83,26 +84,44 @@ class Visualizer(xdot.DotWindow):
     def on_symbol_enter(self, widget):
         symbol = widget.get_text()
         widget.set_text('')
-
         if self.working_dir is None:
             # FIXME: let's have a dialog for the user.
             self.on_newproject(None)
+        self.addSymbol(symbol)
 
+    def addSymbol(self, symbol):
+        print "adding %s" % symbol
         # TODO: Saving the filename and line number.
-        self.interest[symbol] = 1
+        defs, calls = self.functionDefincation(symbol)
+        print defs
+        if len(defs) >= 1:
+            self.interest[symbol] = 1
         self.update_graph()
+        pass
 
     def update_graph(self):
         """ update dot code based on the interested keys """
         funcs = set(self.interest.keys())
+        if len(funcs) <= 0:
+            self.widget.graph = xdot.Graph()
+            return
+
         dotcode = "digraph G {"
         for func in funcs:
-            dotcode += "\"%s\"" % func
+            dotcode += "\"%s\";" % func
             allFuncs, funsCalled = self.functionsCalled (func)
             for m in (allFuncs & funcs):
                 dotcode += "\"%s\" -> \"%s\"" % (func, m)
         dotcode += "}"
         self.set_dotcode(dotcode)
+
+        # saving the data.
+        if self.filename is not None:
+            fileObj = open(self.filename,"w") 
+            fileObj.write("// %s\n" % self.working_dir)
+            fileObj.write("// %s\n" % ' '.join(funcs))
+            fileObj.write(dotcode)
+            fileObj.close()
 
     def on_url_clicked(self, widget, url, event):
         dialog = gtk.MessageDialog(parent = self, buttons = gtk.BUTTONS_OK, message_format="%s clicked" % url)
@@ -124,7 +143,7 @@ class Visualizer(xdot.DotWindow):
         if not os.path.isfile(self.working_dir + "/cscope.out"):
             dialog = gtk.MessageDialog(parent=self, type=gtk.MESSAGE_QUESTION, buttons=gtk.BUTTONS_YES_NO)
             dialog.set_default_response(gtk.RESPONSE_YES)
-            dialog.set_markup("Create cscope database for %s now ?" % filename)
+            dialog.set_markup("Create cscope database for %s now ?" % self.working_dir )
             ret = dialog.run()
             dialog.destroy()
             if ret == gtk.RESPONSE_YES:
@@ -151,7 +170,7 @@ class Visualizer(xdot.DotWindow):
         return (allFuns, funsCalled)
 
     def functionDefincation(self, func):
-        return self.cscope(1, entryFun)
+        return self.cscope(1, func)
 
     def functionsCalled(self, entryFun):
         # Find functions called by this function:
@@ -181,36 +200,55 @@ class Visualizer(xdot.DotWindow):
             chooser.destroy()
 
     def on_save(self, action):
-        # gtk.FILE_CHOOSER_ACTION_SAVE
+        chooser = gtk.FileChooserDialog(title="Save your work",
+                                        action=gtk.FILE_CHOOSER_ACTION_SAVE,
+                                        buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK))
+        chooser.set_default_response(gtk.RESPONSE_OK)
+        filter = gtk.FileFilter()
+        filter.set_name("Graphviz dot files")
+        filter.add_pattern("*.dot")
+        chooser.add_filter(filter)
+        filter = gtk.FileFilter()
+        filter.set_name("All files")
+        filter.add_pattern("*")
+        chooser.add_filter(filter)
+        if chooser.run() == gtk.RESPONSE_OK:
+            self.filename = chooser.get_filename()
+            self.update_graph()
+        chooser.destroy()
         pass
 
     def on_newproject(self, action):
         chooser = gtk.FileChooserDialog(title="Open the source code directory",
                                         action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                                        buttons=(gtk.STOCK_CANCEL,
-                                                 gtk.RESPONSE_CANCEL,
-                                                 gtk.STOCK_OPEN,
-                                                 gtk.RESPONSE_OK))
+                                        buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK))
         chooser.set_default_response(gtk.RESPONSE_OK)
         if chooser.run() == gtk.RESPONSE_OK:
             filename = chooser.get_filename()
-            chooser.destroy()
             self.working_dir = filename
+            self.interest = {}
+            self.filename = None
             self.update_database()
-        else:
-            chooser.destroy()
+            self.update_graph()
+
+        chooser.destroy()
         pass
 
     def open_file(self, filename):
         try:
             fp = file(filename, 'rt')
-            self.set_dotcode(fp.read(), filename)
+            cfgs = [arr.strip().split(' ') for arr in fp.read().split('\n') if len(arr.split(' '))>1] 
+            if cfgs[0][0] == '//':
+                self.working_dir = cfgs[0][1]
+            if cfgs[1][0] == '//':
+                for i in cfgs[1]:
+                    self.addSymbol(i)
             fp.close()
+            self.filename = filename
         except IOError, ex:
             dlg = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
                                     message_format=str(ex),
                                     buttons=gtk.BUTTONS_OK)
-            dlg.set_title('Dot Viewer')
             dlg.run()
             dlg.destroy()
 
