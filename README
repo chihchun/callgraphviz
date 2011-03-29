@@ -1,0 +1,8 @@
+
+A call graph visualzer based on csope[1], graphviz[2], xdot[3]
+
+[1] http://cscope.sourceforge.net/
+[2] http://www.graphviz.org/
+[3] http://code.google.com/p/jrfonseca/wiki/XDot
+
+-Rex <chihchun@kalug.linux.org.tw>
