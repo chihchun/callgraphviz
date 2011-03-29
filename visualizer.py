@@ -84,12 +84,18 @@ class Visualizer(xdot.DotWindow):
             self.on_newproject(None)
         self.addSymbol(symbol)
 
-    def addSymbol(self, symbol):
+    def addSymbol(self, symbol, lazy=0):
         # TODO: sould Saving the filename and line number.
-        defs, calls = self.functionDefincation(symbol)
-        if len(defs) >= 1:
+        if(symbol == '//'):
+            return
+
+        if(lazy == 0):
+            defs, calls = self.functionDefincation(symbol)
+            if len(defs) >= 1:
+                self.interest[symbol] = 1
+            self.update_graph()
+        else:
             self.interest[symbol] = 1
-        self.update_graph()
         pass
 
     def update_graph(self):
@@ -104,7 +110,7 @@ class Visualizer(xdot.DotWindow):
             dotcode += "\"%s\";" % func
             allFuncs, funsCalled = self.functionsCalled (func)
             for m in (allFuncs & funcs):
-                dotcode += "\"%s\" -> \"%s\"" % (func, m)
+                dotcode += "\"%s\" -> \"%s\";" % (func, m)
         dotcode += "}"
         self.set_dotcode(dotcode)
 
@@ -238,8 +244,9 @@ class Visualizer(xdot.DotWindow):
                 self.working_dir = cfgs[0][1]
             if cfgs[1][0] == '//':
                 for i in cfgs[1]:
-                    self.addSymbol(i)
+                    self.addSymbol(i, True)
             fp.close()
+            self.update_graph()
             self.filename = filename
         except IOError, ex:
             dlg = gtk.MessageDialog(type=gtk.MESSAGE_ERROR,
